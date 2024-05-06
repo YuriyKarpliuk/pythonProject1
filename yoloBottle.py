@@ -7,6 +7,7 @@ import numpy as np
 
 cap = cv.VideoCapture('Test video.avi')
 model = YOLO('NEW.pt')
+# model = YOLO('NEW_openvino_model')
 
 tracker = Sort(max_age=20, min_hits=3)
 line = [130, 800, 2489, 800]
@@ -23,7 +24,6 @@ while 1:
     if not ret:
         cap = cv.VideoCapture('Test video.avi')
         continue
-
     detections = np.empty((0, 5))
 
     results = model(img, stream=True)
@@ -32,11 +32,7 @@ while 1:
         for box in parameters:
             x1, y1, x2, y2 = box.xyxy[0]
             confidence = box.conf[0]
-            # class_detect = box.cls[0]
-            # class_detect = int(class_detect)
-            # class_detect = classnames[class_detect]
             conf = math.ceil(confidence * 100)
-            # if class_detect == 'qr-code' and conf >= 20:
             if conf >= 50:
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
