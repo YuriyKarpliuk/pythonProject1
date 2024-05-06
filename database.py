@@ -26,15 +26,15 @@ class DatabaseHandler:
             self.connection.close()
             print("Connection closed.")
 
-    def insert_data(self, val):
+    def insert_data(self, datetime, image):
         try:
             if not self.connection or not self.connection.is_connected():
                 self.connect_to_database()
 
             cursor = self.connection.cursor()
 
-            sql = "INSERT INTO goods_statistic (crossed_datetime) VALUES (%s)"
-            cursor.execute(sql, (val,))
+            sql = "INSERT INTO goods_statistic (crossed_datetime, image_result) VALUES (%s, %s)"
+            cursor.execute(sql, (datetime, image,))
             self.connection.commit()
             print("Data inserted successfully!")
 
@@ -45,29 +45,42 @@ class DatabaseHandler:
             if cursor:
                 cursor.close()
 
-# import mysql.connector
-#
-#
-# def insert_data(val):
-#     try:
-#         mydb = mysql.connector.connect(
-#             host="localhost",
-#             user="root",
-#             password="2003",
-#             database="warehouse"
-#         )
-#
-#         mycursor = mydb.cursor()
-#
-#         sql = "INSERT INTO goods_statistic (crossed_datetime) VALUES (%s)"
-#         mycursor.execute(sql, (val,))
-#         mydb.commit()
-#         print("Data inserted successfully!")
-#
-#     except mysql.connector.Error as err:
-#         print(f"Error: {err}")
-#
-#     finally:
-#         if mydb.is_connected():
-#             mycursor.close()
-#             mydb.close()
+    def read_image_by_datetime(self, datetime):
+        try:
+            if not self.connection or not self.connection.is_connected():
+                self.connect_to_database()
+
+            cursor = self.connection.cursor()
+
+            sql = "SELECT image_result FROM goods_statistic WHERE crossed_datetime = %s"
+            cursor.execute(sql, (datetime,))
+            image_data = cursor.fetchone()[0]
+
+            return image_data
+
+        except mysql.connector.Error as err:
+            print(f"Error: {err}")
+
+        finally:
+            if cursor:
+                cursor.close()
+
+    def read_all_datetime_records(self):
+        try:
+            if not self.connection or not self.connection.is_connected():
+                self.connect_to_database()
+
+            cursor = self.connection.cursor()
+
+            sql = "SELECT crossed_datetime FROM goods_statistic"
+            cursor.execute(sql)
+            image_data_list = cursor.fetchall()
+
+            return image_data_list
+
+        except mysql.connector.Error as err:
+            print(f"Error: {err}")
+
+        finally:
+            if cursor:
+                cursor.close()

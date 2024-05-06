@@ -1,9 +1,12 @@
 import tkinter as tk
+from tkinter import ttk
+
 from PIL import Image, ImageTk
 import cv2 as cv
 import cvzone
 from ultralytics import YOLO
 import math
+from io import BytesIO
 
 from database import DatabaseHandler
 from sort import *
@@ -140,8 +143,8 @@ class VideoApp(tk.Tk):
                 cv.line(img, (self.line[0], self.line[1]), (self.line[2], self.line[3]), (0, 0, 255), 10)
                 if self.counterin.count(id) == 0:
                     self.counterin.append(id)
-                    self.db_handler.insert_data(datetime.now())
-                    cv.imwrite("frame_%s.jpg" % datetime.now().strftime("%Y%m%d%H%M%S"), img)
+                    image_encode = cv.imencode('.jpg', img)[1].tobytes()
+                    self.db_handler.insert_data(datetime.now(), image_encode)
 
         frame = cv.resize(img, (800, 500))
         cv2image = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
@@ -180,13 +183,47 @@ class ResultsApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Results")
+        self.resizable(False, False)
         self.geometry("800x600")
         self.configure(bg="#f0f0f0")
+        self.db_handler = DatabaseHandler(host="localhost", user="root", password="2003", database="warehouse")
+        self.label = None
         self.create_widgets()
 
     def create_widgets(self):
-        self.label = tk.Label(self, text="Hello", font=("Arial", 24), bg="#f0f0f0")
-        self.label.pack(pady=100)
+
+        s = ttk.Style()
+        s.theme_use('clam')
+
+        s.configure('Treeview.Heading', background="green3")
+        s.configure('Custom.Treeview', rowheight=28)
+
+        tree_frame = tk.Frame(self)
+        tree_frame.pack(padx=10, pady=10, side=tk.LEFT, anchor="n")
+
+        self.tree = ttk.Treeview(tree_frame, columns=("Crossed Datetime",), show="headings", style="Custom.Treeview",
+                                 height=9)
+        self.tree.heading("Crossed Datetime", text="Crossed Datetime")
+        self.tree.column("Crossed Datetime", anchor=tk.CENTER)
+
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+        scrollbar.pack(side="right", fill="y")
+
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        self.tree.pack(fill="both", expand=True)
+
+        self.img_frame = tk.Frame(self)
+        self.img_frame.pack(padx=10, pady=10, side=tk.RIGHT, anchor="n")
+        self.placeholder_label = tk.Label(self.img_frame, text="Click on table row to view image result")
+        self.placeholder_label.pack(pady=10)
+
+        self.placeholder_label.config(font=("Arial", 12), foreground="red")
+
+        self.placeholder_label.config(anchor="center")
+
+        self.tree.bind("<ButtonRelease-1>", self.on_tree_click)
+
+        self.populate_treeview()
 
         self.back_button = tk.Button(
             self,
@@ -196,7 +233,43 @@ class ResultsApp(tk.Tk):
             fg="white",
             command=self.back_to_video,
         )
-        self.back_button.pack(pady=10)
+        self.back_button.pack(pady=10, side=tk.BOTTOM)
+
+    def on_tree_click(self, event):
+        item = self.tree.identify_row(event.y)
+
+        if item:
+            item = self.tree.selection()[0]
+            value = self.tree.item(item, "values")[0]
+            image_data = self.db_handler.read_image_by_datetime(value)
+            image = Image.open(BytesIO(image_data))
+            image = image.resize((400, 280), Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(image)
+            if self.label:
+                self.label.config(image=photo)
+                self.label.image = photo
+            else:
+                self.placeholder_label.destroy()
+
+                self.label = tk.Label(self.img_frame, image=photo)
+                self.label.image = photo
+                self.label.pack()
+
+
+
+    def populate_treeview(self):
+        data = self.db_handler.read_all_datetime_records()
+
+        for i, datetime_record in enumerate(data):
+            datetime_value = datetime_record[0]
+            if i % 2 == 0:
+                tag = "evenrow"
+            else:
+                tag = "oddrow"
+            self.tree.insert("", "end", values=(datetime_value,), tags=(tag,))
+
+        self.tree.tag_configure("evenrow", background="#f0f0f0")
+        self.tree.tag_configure("oddrow", background="white")
 
     def back_to_video(self):
         self.destroy()
