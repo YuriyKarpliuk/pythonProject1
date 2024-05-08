@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 from PIL import Image, ImageTk
 import cv2 as cv
@@ -13,12 +13,18 @@ from sort import *
 import numpy as np
 from datetime import datetime
 from tkinter import filedialog
+from tkcalendar import DateEntry
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+import pandas as pd
+
 
 class ModelInitializer:
     def __init__(self):
         self.model = YOLO('NEW_openvino_model')
         self.classname = self.model.names[0]
         self.tracker = Sort(max_age=20, min_hits=3)
+
 
 class MainApp(tk.Tk):
     def __init__(self):
@@ -30,6 +36,12 @@ class MainApp(tk.Tk):
         self.db_handler = DatabaseHandler(host="localhost", user="root", password="2003", database="warehouse")
         self.model_initializer = model_initializer
         self.initialize_video()
+
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        self.db_handler.close_connection()
+        self.destroy()
 
     def initialize_video(self):
         self.model = self.model_initializer.model
@@ -320,6 +332,7 @@ class TableResultsApp(tk.Tk):
         self.destroy()
         MainApp().mainloop()
 
+
 class HistogramResultsApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -331,6 +344,118 @@ class HistogramResultsApp(tk.Tk):
         self.create_widgets()
 
     def create_widgets(self):
+        self.selection_frame = tk.Frame(self, bg="#ffffff", bd=2, relief=tk.GROOVE)
+        self.selection_frame.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=(20, 75))
+
+        self.start_date_label = tk.Label(self.selection_frame, text="Select start date:",
+                                         font=("Arial", 12, "bold"), bg="#ffffff")
+        self.start_date_label.pack(pady=(30, 10), padx=20, anchor=tk.CENTER)
+
+        self.start_datetime_picker = DateEntry(self.selection_frame, width=20, background='darkblue',
+                                               foreground='white', borderwidth=2, state="readonly",
+                                               date_pattern="dd.MM.yyyy")
+        self.start_datetime_picker.pack(pady=10, padx=20, anchor=tk.CENTER)
+
+        self.start_time_label = tk.Label(self.selection_frame, text="Select start time:",
+                                         font=("Arial", 12, "bold"), bg="#ffffff")
+        self.start_time_label.pack(pady=10, padx=20, anchor=tk.CENTER)
+
+        self.start_time_frame = tk.Frame(self.selection_frame, bg="#ffffff")
+        self.start_time_frame.pack(pady=(0, 10))
+
+        self.start_hour_combobox = ttk.Combobox(self.start_time_frame, values=[f"{hour:02d}" for hour in range(24)],
+                                                state="readonly", width=3)
+        self.start_hour_combobox.pack(pady=5, padx=5, side=tk.LEFT)
+        self.start_hour_combobox.set("00")
+
+        self.hour_label = tk.Label(self.start_time_frame, text="hr")
+        self.hour_label.pack(pady=3, padx=3, side=tk.LEFT)
+
+        self.start_minute_combobox = ttk.Combobox(self.start_time_frame,
+                                                  values=[f"{minute:02d}" for minute in range(60)],
+                                                  state="readonly", width=3)
+        self.start_minute_combobox.pack(pady=5, padx=5, side=tk.LEFT)
+        self.start_minute_combobox.set("00")
+
+        self.minute_label = tk.Label(self.start_time_frame, text="min")
+        self.minute_label.pack(pady=3, padx=3, side=tk.LEFT)
+
+        self.start_seconds_combobox = ttk.Combobox(self.start_time_frame,
+                                                   values=[f"{second:02d}" for second in range(60)],
+                                                   state="readonly", width=3)
+        self.start_seconds_combobox.pack(pady=5, padx=5, side=tk.LEFT)
+        self.start_seconds_combobox.set("00")
+
+        self.second_label = tk.Label(self.start_time_frame, text="sec")
+        self.second_label.pack(pady=3, padx=3, side=tk.LEFT)
+
+        self.end_time_label = tk.Label(self.selection_frame, text="Select end date:",
+                                       font=("Arial", 12, "bold"), bg="#ffffff")
+        self.end_time_label.pack(pady=10, padx=20, anchor=tk.CENTER)
+
+        self.end_datetime_picker = DateEntry(self.selection_frame, width=20, background='darkblue', foreground='white',
+                                             borderwidth=2, state="readonly", date_pattern="dd.MM.yyyy")
+        self.end_datetime_picker.pack(pady=10, padx=20, anchor=tk.CENTER)
+
+        self.end_time_label = tk.Label(self.selection_frame, text="Select end time:",
+                                       font=("Arial", 12, "bold"), bg="#ffffff")
+        self.end_time_label.pack(pady=10, padx=20, anchor=tk.CENTER)
+
+        self.end_time_frame = tk.Frame(self.selection_frame, bg="#ffffff")
+        self.end_time_frame.pack(pady=(0, 10))
+
+        self.end_hour_combobox = ttk.Combobox(self.end_time_frame, values=[f"{hour:02d}" for hour in range(24)],
+                                              state="readonly", width=3)
+        self.end_hour_combobox.pack(pady=5, padx=5, side=tk.LEFT)
+        self.end_hour_combobox.set("00")
+
+        self.hour_label = tk.Label(self.end_time_frame, text="hr")
+        self.hour_label.pack(pady=3, padx=3, side=tk.LEFT)
+
+        self.end_minute_combobox = ttk.Combobox(self.end_time_frame, values=[f"{minute:02d}" for minute in range(60)],
+                                                state="readonly", width=3)
+        self.end_minute_combobox.pack(pady=5, padx=5, side=tk.LEFT)
+        self.end_minute_combobox.set("00")
+
+        self.minute_label = tk.Label(self.end_time_frame, text="min")
+        self.minute_label.pack(pady=3, padx=3, side=tk.LEFT)
+
+        self.end_seconds_combobox = ttk.Combobox(self.end_time_frame, values=[f"{second:02d}" for second in range(60)],
+                                                 state="readonly", width=3)
+        self.end_seconds_combobox.pack(pady=5, padx=5, side=tk.LEFT)
+        self.end_seconds_combobox.set("00")
+
+        self.second_label = tk.Label(self.end_time_frame, text="sec")
+        self.second_label.pack(pady=3, padx=3, side=tk.LEFT)
+
+        self.selection_label = tk.Label(self.selection_frame, text="View results by:", font=("Arial", 12, "bold"),
+                                        bg="#ffffff")
+        self.selection_label.pack(pady=(20, 10))
+
+        self.radio_button_container = tk.Frame(self.selection_frame, bg="#ffffff")
+        self.radio_button_container.pack(pady=(0, 10))
+
+        self.histogram_options = ["Years", "Months", "Days", "Hours"]
+        self.selected_option = tk.StringVar(value=self.histogram_options[0])
+
+        style = ttk.Style()
+        style.configure("Custom.TRadiobutton", background="#ffffff")
+
+        for option in self.histogram_options:
+            ttk.Radiobutton(self.radio_button_container, text=option, value=option, variable=self.selected_option,
+                            style="Custom.TRadiobutton").pack(
+                padx=10, anchor=tk.W)
+
+        self.build_histogram_button = tk.Button(
+            self.selection_frame,
+            text="Build Histogram",
+            font=("Arial", 12, "bold"),
+            bg="#4CAF50",
+            fg="white",
+            command=self.build_histogram
+        )
+        self.build_histogram_button.pack(pady=(20, 30), padx=10)
+
         self.back_button = tk.Button(
             text="Back to Main Page",
             font=("Arial", 12, "bold"),
@@ -338,7 +463,70 @@ class HistogramResultsApp(tk.Tk):
             fg="white",
             command=self.back_to_video,
         )
-        self.back_button.pack(side=tk.BOTTOM, pady=20)
+        self.back_button.pack(side=tk.BOTTOM, pady=(0, 20))
+
+        self.histogram_canvas = tk.Canvas(self, bg="#ffffff", bd=2, relief=tk.GROOVE)
+        self.histogram_canvas.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=20)
+
+    def build_histogram(self):
+        selected_option = self.selected_option.get()
+        start_date = self.start_datetime_picker.get_date()
+        start_time = f"{self.start_hour_combobox.get()}:{self.start_minute_combobox.get()}:{self.start_seconds_combobox.get()}"
+        end_date = self.end_datetime_picker.get_date()
+        end_time = f"{self.end_hour_combobox.get()}:{self.end_minute_combobox.get()}:{self.end_seconds_combobox.get()}"
+
+        start_datetime = pd.to_datetime(f"{start_date} {start_time}")
+        end_datetime = pd.to_datetime(f"{end_date} {end_time}")
+
+        if start_datetime >= end_datetime:
+            messagebox.showerror("Error", "Start datetime must be earlier than end datetime.")
+            return
+
+        self.histogram_canvas.delete("all")
+
+        if hasattr(self, "canvas"):
+            self.canvas.get_tk_widget().destroy()
+            plt.close(self.fig)
+
+        data = self.fetch_data(start_datetime, end_datetime, selected_option)
+
+        self.fig, ax = plt.subplots()
+        n, bins, patches = ax.hist(data, color='skyblue', edgecolor='black', bins=20)
+        ax.set_xlabel(selected_option)
+        ax.set_ylabel('Count')
+        ax.set_title('Histogram results of goods crossed the line\nTime interval: from %s to %s' % (
+            start_datetime, end_datetime))
+        ax.grid(True)
+
+        ax.set_xticks(np.unique(data))
+
+        for rect in patches:
+            height = rect.get_height()
+            ax.annotate(f'{int(height)}', xy=(rect.get_x() + rect.get_width() / 2, height),
+                        xytext=(0, 3),
+                        textcoords="offset points",
+                        ha='center', va='bottom')
+
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.histogram_canvas)
+        self.canvas.draw()
+
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+    def fetch_data(self, start_datetime, end_datetime, selected_option):
+        datetime_records = self.db_handler.read_datetime_records_in_range(start_datetime, end_datetime)
+
+        df = pd.DataFrame(datetime_records, columns=['datetime'])
+
+        if selected_option == "Years":
+            data = df['datetime'].dt.year
+        elif selected_option == "Months":
+            data = df['datetime'].dt.month
+        elif selected_option == "Days":
+            data = df['datetime'].dt.day
+        elif selected_option == "Hours":
+            data = df['datetime'].dt.hour
+
+        return data
 
     def back_to_video(self):
         self.destroy()
