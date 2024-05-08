@@ -6,8 +6,8 @@ from sort import *
 import numpy as np
 
 cap = cv.VideoCapture('Test video.avi')
-model = YOLO('NEW.pt')
-# model = YOLO('NEW_openvino_model')
+# model = YOLO('NEW.pt')
+model = YOLO('NEW_openvino_model')
 
 tracker = Sort(max_age=20, min_hits=3)
 line = [130, 800, 2489, 800]

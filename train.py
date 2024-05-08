@@ -1,185 +1,115 @@
 import tkinter as tk
-import vlc
-from tkinter import filedialog
-from datetime import timedelta
+from tkinter import ttk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+import pandas as pd
+from database import DatabaseHandler
+import numpy as np
 
 
-class MediaPlayerApp(tk.Tk):
+class HistogramResultsApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Media Player")
-        self.geometry("800x600")
+        self.title("Histogram Results")
+        self.resizable(False, False)
+        self.geometry("1000x700")
         self.configure(bg="#f0f0f0")
-        self.initialize_player()
-
-    def initialize_player(self):
-        self.instance = vlc.Instance()
-        self.media_player = self.instance.media_player_new()
-        self.current_file = None
-        self.playing_video = False
-        self.video_paused = False
+        self.db_handler = DatabaseHandler(host="localhost", user="root", password="2003", database="warehouse")
         self.create_widgets()
 
     def create_widgets(self):
-        self.media_canvas = tk.Canvas(self, bg="black", width=800, height=400)
-        self.media_canvas.pack(pady=10, fill=tk.BOTH, expand=True)
-        self.select_file_button = tk.Button(
-            self,
-            text="Select File",
-            font=("Arial", 12, "bold"),
-            command=self.select_file,
-        )
-        self.select_file_button.pack(pady=5)
-        self.time_label = tk.Label(
-            self,
-            text="00:00:00 / 00:00:00",
-            font=("Arial", 12, "bold"),
-            fg="#555555",
-            bg="#f0f0f0",
-        )
-        self.time_label.pack(pady=5)
-        self.control_buttons_frame = tk.Frame(self, bg="#f0f0f0")
-        self.control_buttons_frame.pack(pady=5)
-        self.play_button = tk.Button(
-            self.control_buttons_frame,
-            text="Play",
+        self.selection_frame = tk.Frame(self, bg="#ffffff", bd=2, relief=tk.GROOVE)
+        self.selection_frame.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
+
+        self.selection_label = tk.Label(self.selection_frame, text="View results by:", font=("Arial", 12, "bold"),
+                                        bg="#ffffff")
+        self.selection_label.pack(pady=(10, 5))
+
+        self.histogram_options = ["Years", "Months", "Days", "Hours"]
+        self.selected_option = tk.StringVar(value=self.histogram_options[0])
+
+        for option in self.histogram_options:
+            ttk.Radiobutton(self.selection_frame, text=option, value=option, variable=self.selected_option).pack(
+                anchor=tk.W, padx=20)
+
+        self.build_histogram_button = tk.Button(
+            self.selection_frame,
+            text="Build Histogram",
             font=("Arial", 12, "bold"),
             bg="#4CAF50",
             fg="white",
-            command=self.play_video,
+            command=self.build_histogram
         )
-        self.play_button.pack(side=tk.LEFT, padx=5, pady=5)
-        self.pause_button = tk.Button(
-            self.control_buttons_frame,
-            text="Pause",
-            font=("Arial", 12, "bold"),
-            bg="#FF9800",
-            fg="white",
-            command=self.pause_video,
-        )
-        self.pause_button.pack(side=tk.LEFT, padx=10, pady=5)
-        self.stop_button = tk.Button(
-            self.control_buttons_frame,
-            text="Stop",
-            font=("Arial", 12, "bold"),
-            bg="#F44336",
-            fg="white",
-            command=self.stop,
-        )
-        self.stop_button.pack(side=tk.LEFT, pady=5)
-        self.fast_forward_button = tk.Button(
-            self.control_buttons_frame,
-            text="Fast Forward",
+        self.build_histogram_button.pack(side=tk.BOTTOM, pady=(20, 10), padx=10)
+
+        self.back_button = tk.Button(
+            text="Back to Main Page",
             font=("Arial", 12, "bold"),
             bg="#2196F3",
             fg="white",
-            command=self.fast_forward,
+            command=self.back_to_video,
         )
-        self.fast_forward_button.pack(side=tk.LEFT, padx=10, pady=5)
-        self.rewind_button = tk.Button(
-            self.control_buttons_frame,
-            text="Rewind",
-            font=("Arial", 12, "bold"),
-            bg="#2196F3",
-            fg="white",
-            command=self.rewind,
-        )
-        self.rewind_button.pack(side=tk.LEFT, pady=5)
-        self.progress_bar = VideoProgressBar(
-            self, self.set_video_position, bg="#e0e0e0", highlightthickness=0
-        )
-        self.progress_bar.pack(fill=tk.X, padx=10, pady=5)
+        self.back_button.pack(side=tk.BOTTOM, pady=(0, 20))
 
-    def select_file(self):
-        file_path = filedialog.askopenfilename(
-            filetypes=[("Media Files", "*.mp4 *.avi")]
-        )
-        if file_path:
-            self.current_file = file_path
-            self.time_label.config(text="00:00:00 / " + self.get_duration_str())
-            self.play_video()
+        self.histogram_canvas = tk.Canvas(self, bg="#ffffff", bd=2, relief=tk.GROOVE)
+        self.histogram_canvas.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-    def get_duration_str(self):
-        if self.playing_video:
-            total_duration = self.media_player.get_length()
-            total_duration_str = str(timedelta(milliseconds=total_duration))[:-3]
-            return total_duration_str
-        return "00:00:00"
+    def build_histogram(self):
+        selected_option = self.selected_option.get()
 
-    def play_video(self):
-        if not self.playing_video:
-            media = self.instance.media_new(self.current_file)
-            self.media_player.set_media(media)
-            self.media_player.set_hwnd(self.media_canvas.winfo_id())
-            self.media_player.play()
-            self.playing_video = True
+        self.histogram_canvas.delete("all")
 
-    def fast_forward(self):
-        if self.playing_video:
-            current_time = self.media_player.get_time() + 10000
-            self.media_player.set_time(current_time)
+        if hasattr(self, "canvas"):
+            self.canvas.get_tk_widget().destroy()
+            plt.close(self.fig)
 
-    def rewind(self):
-        if self.playing_video:
-            current_time = self.media_player.get_time() - 10000
-            self.media_player.set_time(current_time)
+        data = self.fetch_data(selected_option)
 
-    def pause_video(self):
-        if self.playing_video:
-            if self.video_paused:
-                self.media_player.play()
-                self.video_paused = False
-                self.pause_button.config(text="Pause")
-            else:
-                self.media_player.pause()
-                self.video_paused = True
-                self.pause_button.config(text="Resume")
+        if selected_option == "Years":
+            bins = np.arange(data.min(), data.max() + 1)
+            xticks = range(data.min(), data.max() + 1)
+        elif selected_option == "Months":
+            bins = np.arange(0.5, 13, 1)
+            xticks = range(1, 13)
+        elif selected_option == "Days":
+            bins = np.arange(0.5, 32, 1)
+            xticks = range(1, 32)
+        elif selected_option == "Hours":
+            bins = np.arange(-0.5, 24, 1)
+            xticks = range(0, 24)
 
-    def stop(self):
-        if self.playing_video:
-            self.media_player.stop()
-            self.playing_video = False
-        self.time_label.config(text="00:00:00 / " + self.get_duration_str())
+        self.fig, ax = plt.subplots()
+        ax.hist(data, color='skyblue', edgecolor='black', bins=bins)
+        ax.set_xlabel(selected_option)
+        ax.set_ylabel('Count')
+        ax.set_title('Histogram')
+        ax.set_xticks(xticks)
 
-    def set_video_position(self, value):
-        if self.playing_video:
-            total_duration = self.media_player.get_length()
-            position = int((float(value) / 100) * total_duration)
-            self.media_player.set_time(position)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.histogram_canvas)
+        self.canvas.draw()
 
-    def update_video_progress(self):
-        if self.playing_video:
-            total_duration = self.media_player.get_length()
-            current_time = self.media_player.get_time()
-            progress_percentage = (current_time / total_duration) * 100
-            self.progress_bar.set(progress_percentage)
-            current_time_str = str(timedelta(milliseconds=current_time))[:-3]
-            total_duration_str = str(timedelta(milliseconds=total_duration))[:-3]
-            self.time_label.config(text=f"{current_time_str} / {total_duration_str}")
-        self.after(1000, self.update_video_progress)
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
+    def fetch_data(self, selected_option):
+        datetime_records = self.db_handler.read_all_datetime_records()
 
-class VideoProgressBar(tk.Scale):
-    def __init__(self, master, command, **kwargs):
-        kwargs["showvalue"] = False
-        super().__init__(
-            master,
-            from_=0,
-            to=100,
-            orient=tk.HORIZONTAL,
-            length=800,
-            command=command,
-            **kwargs,
-        )
-        self.bind("<Button-1>", self.on_click)
+        df = pd.DataFrame(datetime_records, columns=['datetime'])
 
-    def on_click(self, event):
-        if self.cget("state") == tk.NORMAL:
-            value = (event.x / self.winfo_width()) * 100
-            self.set(value)
+        if selected_option == "Years":
+            data = df['datetime'].dt.year
+        elif selected_option == "Months":
+            data = df['datetime'].dt.month
+        elif selected_option == "Days":
+            data = df['datetime'].dt.day
+        elif selected_option == "Hours":
+            data = df['datetime'].dt.hour
+
+        return data
+
+    def back_to_video(self):
+        self.destroy()
 
 
 if __name__ == "__main__":
-    app = MediaPlayerApp()
-    app.update_video_progress()
+    app = HistogramResultsApp()
     app.mainloop()

@@ -36,7 +36,6 @@ class DatabaseHandler:
             sql = "INSERT INTO goods_statistic (crossed_datetime, image_result) VALUES (%s, %s)"
             cursor.execute(sql, (datetime, image,))
             self.connection.commit()
-            print("Data inserted successfully!")
 
         except mysql.connector.Error as err:
             print(f"Error: {err}")
