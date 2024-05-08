@@ -121,6 +121,7 @@ class MainApp(tk.Tk):
             self.cap = cv.VideoCapture(video_file_path)
             self.change_button_state("play_button", tk.NORMAL)
             self.change_button_state("reset_button", tk.NORMAL)
+            self.change_button_state("view_charts_button", tk.DISABLED)
             self.change_button_state("view_results_button", tk.DISABLED)
             self.process_frame()
 
@@ -128,6 +129,7 @@ class MainApp(tk.Tk):
         self.play_clicked = False
         self.change_button_state("pause_button", tk.DISABLED)
         self.change_button_state("view_results_button", tk.NORMAL)
+        self.change_button_state("view_charts_button", tk.NORMAL)
         self.change_button_state("play_button", tk.DISABLED)
         self.counterin = []
         self.crossed_line_label.config(text=f'Crossed the line {len(self.counterin)} times')
@@ -187,6 +189,7 @@ class MainApp(tk.Tk):
         self.change_button_state("play_button", tk.DISABLED)
         self.change_button_state("pause_button", tk.NORMAL)
         self.change_button_state("view_results_button", tk.DISABLED)
+        self.change_button_state("view_charts_button", tk.DISABLED)
         if self.cap is not None:
             self.process_frame()
 
@@ -220,10 +223,8 @@ class TableResultsApp(tk.Tk):
         self.create_widgets()
 
     def create_widgets(self):
-
         s = ttk.Style()
         s.theme_use('clam')
-
         s.configure('Treeview.Heading', background="green3")
         s.configure('Custom.Treeview', rowheight=25)
 
@@ -245,23 +246,36 @@ class TableResultsApp(tk.Tk):
         self.tree.configure(yscrollcommand=scrollbar.set)
         self.tree.pack(fill="both", expand=True)
 
+        self.populate_treeview()
+
         self.placeholder_label = tk.Label(self, text="Click on table row to view image result")
         self.placeholder_label.pack(padx=10, anchor="n")
-
         self.placeholder_label.config(font=("Arial", 12), foreground="red")
 
         self.tree.bind("<ButtonRelease-1>", self.on_tree_click)
 
-        self.populate_treeview()
+        self.control_buttons_frame = tk.Frame(bg="#f0f0f0")
+        self.control_buttons_frame.pack(pady=5, side=tk.BOTTOM)
+
+        self.refresh_button = tk.Button(
+            self.control_buttons_frame,
+            text="Refresh Table",
+            font=("Arial", 12, "bold"),
+            bg="#4CAF50",
+            fg="white",
+            command=self.update_treeview,
+        )
+        self.refresh_button.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.back_button = tk.Button(
+            self.control_buttons_frame,
             text="Back to Main Page",
             font=("Arial", 12, "bold"),
             bg="#2196F3",
             fg="white",
             command=self.back_to_video,
         )
-        self.back_button.pack(side=tk.BOTTOM, pady=20)
+        self.back_button.pack(side=tk.LEFT, padx=5, pady=5)
 
     def on_tree_click(self, event):
         item = self.tree.identify_row(event.y)
@@ -278,7 +292,6 @@ class TableResultsApp(tk.Tk):
                 self.label.image = photo
             else:
                 self.placeholder_label.destroy()
-
                 self.label = tk.Label(self, image=photo)
                 self.label.image = photo
                 self.label.pack(padx=10, anchor="n")
@@ -297,10 +310,15 @@ class TableResultsApp(tk.Tk):
         self.tree.tag_configure("evenrow", background="#f0f0f0")
         self.tree.tag_configure("oddrow", background="white")
 
+    def update_treeview(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        self.populate_treeview()
+        self.tree.bind("<ButtonRelease-1>", self.on_tree_click)
+
     def back_to_video(self):
         self.destroy()
         MainApp().mainloop()
-
 
 class HistogramResultsApp(tk.Tk):
     def __init__(self):

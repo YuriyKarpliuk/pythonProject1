@@ -17,14 +17,12 @@ class DatabaseHandler:
                 password=self.password,
                 database=self.database
             )
-            print("Connected to database successfully!")
         except mysql.connector.Error as err:
             print(f"Error: {err}")
 
     def close_connection(self):
         if self.connection and self.connection.is_connected():
             self.connection.close()
-            print("Connection closed.")
 
     def insert_data(self, datetime, image):
         try:
@@ -43,6 +41,7 @@ class DatabaseHandler:
         finally:
             if cursor:
                 cursor.close()
+            self.close_connection()
 
     def read_image_by_datetime(self, datetime):
         try:
@@ -63,6 +62,7 @@ class DatabaseHandler:
         finally:
             if cursor:
                 cursor.close()
+            self.close_connection()
 
     def read_all_datetime_records(self):
         try:
@@ -83,3 +83,4 @@ class DatabaseHandler:
         finally:
             if cursor:
                 cursor.close()
+            self.close_connection()
