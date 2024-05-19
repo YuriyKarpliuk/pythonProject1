@@ -84,3 +84,24 @@ class DatabaseHandler:
             if cursor:
                 cursor.close()
             self.close_connection()
+
+    def read_datetime_records_in_range(self, start_datetime, end_datetime):
+        try:
+            if not self.connection or not self.connection.is_connected():
+                self.connect_to_database()
+
+            cursor = self.connection.cursor()
+
+            sql = "SELECT crossed_datetime FROM goods_statistic WHERE crossed_datetime BETWEEN %s AND %s"
+            cursor.execute(sql, (start_datetime, end_datetime))
+            datetime_records = cursor.fetchall()
+
+            return datetime_records
+
+        except mysql.connector.Error as err:
+            print(f"Error: {err}")
+
+        finally:
+            if cursor:
+                cursor.close()
+            self.close_connection()

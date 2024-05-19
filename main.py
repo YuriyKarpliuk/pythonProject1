@@ -8,7 +8,7 @@ from ultralytics import YOLO
 import math
 from io import BytesIO
 
-from database import DatabaseHandler
+from database_handler import DatabaseHandler
 from sort import *
 import numpy as np
 from datetime import datetime
@@ -36,7 +36,6 @@ class MainApp(tk.Tk):
         self.db_handler = DatabaseHandler(host="localhost", user="root", password="2003", database="warehouse")
         self.model_initializer = model_initializer
         self.initialize_video()
-
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def on_closing(self):
