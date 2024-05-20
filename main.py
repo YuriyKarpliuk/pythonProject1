@@ -8,7 +8,7 @@ from ultralytics import YOLO
 import math
 from io import BytesIO
 
-from database_handler import DatabaseHandler
+from databaseHandler import DatabaseHandler
 from sort import *
 import numpy as np
 from datetime import datetime
@@ -47,14 +47,17 @@ class MainApp(tk.Tk):
         self.classname = self.model_initializer.classname
         self.tracker = self.model_initializer.tracker
         self.line = [0, 800, 2560, 800]
+        self.counter = []
         self.counterin = []
+        self.counterout = []
+        self.coordinates = []
         self.cap = None
         self.play_clicked = False
         self.create_widgets()
 
     def create_widgets(self):
         self.crossed_line_label = tk.Label(
-            text=f'Crossed the line {len(self.counterin)} times',
+            text=f'Crossed the line {len(self.counter)} times',
             font=("Arial", 12, "bold"),
             bg="#f0f0f0"
         )
@@ -142,8 +145,8 @@ class MainApp(tk.Tk):
         self.change_button_state("view_results_button", tk.NORMAL)
         self.change_button_state("view_charts_button", tk.NORMAL)
         self.change_button_state("play_button", tk.DISABLED)
-        self.counterin = []
-        self.crossed_line_label.config(text=f'Crossed the line {len(self.counterin)} times')
+        self.counter = []
+        self.crossed_line_label.config(text=f'Crossed the line {len(self.counter)} times')
         self.cap.release()
         self.media_canvas.delete("all")
 
@@ -176,13 +179,22 @@ class MainApp(tk.Tk):
             cx, cy = x1 + w // 2, y1 + h // 2
             cvzone.cornerRect(img, [x1, y1, w, h], rt=5)
             cvzone.putTextRect(img, self.classname, [x1 + 8, y1 - 12], scale=2, thickness=2)
+            if self.coordinates and cy > self.coordinates[-1] and id == self.counter[-1] and self.counterout.count(
+                    id) == 0:
+                self.counterout.append(id)
+                print("Виїзд")
+            elif self.coordinates and cy < self.coordinates[-1] and id == self.counter[-1] and self.counterin.count(
+                    id) == 0:
+                self.counterin.append(id)
+                print("Заїзд")
             if self.line[1] - 18 < cy < self.line[3] + 18:
                 cv.line(img, (self.line[0], self.line[1]), (self.line[2], self.line[3]), (0, 0, 255), 10)
-                if self.counterin.count(id) == 0:
-                    self.counterin.append(id)
+                if self.counter.count(id) == 0:
+                    self.counter.append(id)
+                    self.coordinates.append(cy)
                     image_encode = cv.imencode('.jpg', img)[1].tobytes()
                     self.db_handler.insert_data(datetime.now(), image_encode)
-                    self.crossed_line_label.config(text=f'Crossed the line {len(self.counterin)} times')
+                    self.crossed_line_label.config(text=f'Crossed the line {len(self.counter)} times')
 
         frame = cv.resize(img, (800, 500))
         cv2image = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
