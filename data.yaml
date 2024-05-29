@@ -1,0 +1,14 @@
+path: D:\MyProjects\pythonProject1
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 2
+names: ['-', 'QR code']
+
+roboflow:
+  workspace: new-workspace-salgh
+  project: qr-code-5yak8
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/new-workspace-salgh/qr-code-5yak8/dataset/2

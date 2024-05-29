@@ -7,7 +7,6 @@ import cvzone
 from ultralytics import YOLO
 import math
 from io import BytesIO
-
 from databaseHandler import DatabaseHandler
 from sort import *
 import numpy as np
@@ -17,6 +16,7 @@ from tkcalendar import DateEntry
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import pandas as pd
+from dllInteraction import ControllerInterface
 
 
 class ModelInitializer:
@@ -24,6 +24,19 @@ class ModelInitializer:
         self.model = YOLO('NEW_openvino_model')
         self.classname = self.model.names[0]
         self.tracker = Sort(max_age=20, min_hits=3)
+
+
+class ControllerManager:
+    def __init__(self):
+        self.controller_interface = ControllerInterface('D:/4course/2sem/диплом/BSc_APP_1_Output/BSc_APP_1_Libd.dll')
+        self.controller_instance_variable = self.controller_interface.initialize_controller()
+        self.connected_instance_variable = self.controller_interface.connect_controller(
+            self.controller_instance_variable)
+        self.process_data_variable = None
+
+    def process_data(self):
+        self.process_data_variable = self.controller_interface.process_data(self.controller_instance_variable)
+
 
 
 class MainApp(tk.Tk):
@@ -35,6 +48,7 @@ class MainApp(tk.Tk):
         self.resizable(False, False)
         self.db_handler = DatabaseHandler(host="localhost", user="root", password="2003", database="warehouse")
         self.model_initializer = model_initializer
+        self.controller_manager = controller_manager
         self.initialize_video()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -179,17 +193,20 @@ class MainApp(tk.Tk):
             cx, cy = x1 + w // 2, y1 + h // 2
             cvzone.cornerRect(img, [x1, y1, w, h], rt=5)
             cvzone.putTextRect(img, self.classname, [x1 + 8, y1 - 12], scale=2, thickness=2)
-            if self.coordinates and cy > self.coordinates[-1] and id == self.counter[-1] and self.counterout.count(
-                    id) == 0:
-                self.counterout.append(id)
-                print("Виїзд")
-            elif self.coordinates and cy < self.coordinates[-1] and id == self.counter[-1] and self.counterin.count(
-                    id) == 0:
-                self.counterin.append(id)
-                print("Заїзд")
+            # if self.coordinates and self.counter and cy > self.coordinates[-1] and id == self.counter[
+            #     -1] and self.counterout.count(
+            #     id) == 0:
+            #     self.counterout.append(id)
+            #     print("Виїзд")
+            # elif self.coordinates and self.counter and cy < self.coordinates[-1] and id == self.counter[
+            #     -1] and self.counterin.count(
+            #     id) == 0:
+            #     self.counterin.append(id)
+            #     print("Заїзд")
             if self.line[1] - 18 < cy < self.line[3] + 18:
                 cv.line(img, (self.line[0], self.line[1]), (self.line[2], self.line[3]), (0, 0, 255), 10)
                 if self.counter.count(id) == 0:
+                    self.controller_manager.process_data()
                     self.counter.append(id)
                     self.coordinates.append(cy)
                     image_encode = cv.imencode('.jpg', img)[1].tobytes()
@@ -546,5 +563,6 @@ class HistogramResultsApp(tk.Tk):
 
 if __name__ == "__main__":
     model_initializer = ModelInitializer()
+    controller_manager = ControllerManager()
     app = MainApp()
     app.mainloop()

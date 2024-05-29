@@ -1,0 +1,6 @@
+path: D:\MyProjects\pythonProject1\freedomtech
+train: images/training
+val: images/training
+
+names:
+  0: qr-code
